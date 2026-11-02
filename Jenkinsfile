@@ -4,7 +4,7 @@ pipeline {
     environment {
         IMAGE = 'ramyapadala/my-apache-app'
         CONTAINER = 'my-apache-app'
-        SERVER = '192.168.200.170'
+        SERVER = '192.168.201.140'
         PORT = '8090' 
     }
 
@@ -27,7 +27,7 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'dockerhub-creds',
+                        credentialsId: 'dockerhub-credentials',
                         usernameVariable: 'ramyapadala',
                         passwordVariable: 'dckr_pat_1bHLkvXONy1E-uWIscvvZWhao5M'
                     )
@@ -69,7 +69,7 @@ pipeline {
     post {
         success {
             echo 'Deployment successful!'
-            echo 'Website: http://YOUR_SERVER_IP:8090'
+            echo 'Website: http://192.168.201.140:8090'
         }
 
         failure {
