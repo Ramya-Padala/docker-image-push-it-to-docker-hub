@@ -49,23 +49,24 @@ pipeline {
         }
 
         stage('Deploy on Remote Server') {
-            steps {
-                sshagent(['deploy-server-ssh']) {
-                    sh '''
-                        ssh -o BatchMode=yes \
-                            "$DEPLOY_USER@$SERVER" "
-                                docker pull $IMAGE:latest &&
-                                (docker rm -f $CONTAINER || true) &&
-                                docker run -d \
-                                    --name $CONTAINER \
-                                    --restart unless-stopped \
-                                    -p $PORT:80 \
-                                    $IMAGE:latest
-                            "
-                    '''
-                }
-            }
+    steps {
+        sshagent(['deploy-server-ssh']) {
+            sh '''
+                ssh -o BatchMode=yes \
+                    -o IdentitiesOnly=yes \
+                    vitel@192.168.201.140 "
+                        docker pull ramyapadala/my-apache-app:latest &&
+                        (docker rm -f my-apache-app || true) &&
+                        docker run -d \
+                            --name my-apache-app \
+                            --restart unless-stopped \
+                            -p 8090:80 \
+                            ramyapadala/my-apache-app:latest
+                    "
+            '''
         }
+    }
+}
 
         stage('Verify Deployment') {
             steps {
