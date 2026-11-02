@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -36,7 +35,6 @@ pipeline {
                 ]) {
                     sh '''
                         set +x
-
                         echo "$DH_PASS" | docker login \
                             -u "$DH_USER" --password-stdin
 
@@ -49,24 +47,39 @@ pipeline {
         }
 
         stage('Deploy on Remote Server') {
-    steps {
-        sshagent(['deploy-server-ssh']) {
-            sh '''
-                ssh -o BatchMode=yes \
-                    -o IdentitiesOnly=yes \
-                    vitel@192.168.201.140 "
-                        docker pull ramyapadala/my-apache-app:latest &&
-                        (docker rm -f my-apache-app || true) &&
-                        docker run -d \
-                            --name my-apache-app \
-                            --restart unless-stopped \
-                            -p 8090:80 \
-                            ramyapadala/my-apache-app:latest
-                    "
-            '''
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DH_USER',
+                        passwordVariable: 'DH_PASS'
+                    )
+                ]) {
+                    sshagent(['deploy-server-ssh']) {
+                        sh '''
+                            set +x
+
+                            printf '%s' "$DH_PASS" | ssh \
+                                -o BatchMode=yes \
+                                -o IdentitiesOnly=yes \
+                                "$DEPLOY_USER@$SERVER" "
+                                    docker login \
+                                        -u '$DH_USER' \
+                                        --password-stdin &&
+                                    docker pull $IMAGE:latest &&
+                                    (docker rm -f $CONTAINER || true) &&
+                                    docker run -d \
+                                        --name $CONTAINER \
+                                        --restart unless-stopped \
+                                        -p $PORT:80 \
+                                        $IMAGE:latest &&
+                                    docker logout
+                                "
+                        '''
+                    }
+                }
+            }
         }
-    }
-}
 
         stage('Verify Deployment') {
             steps {
@@ -89,5 +102,3 @@ pipeline {
         }
     }
 }
-
-
