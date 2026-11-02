@@ -1,11 +1,13 @@
+
 pipeline {
     agent any
 
     environment {
-        IMAGE = 'ramyapadala/my-apache-app'
-        CONTAINER = 'my-apache-app'
-        SERVER = '192.168.201.140'
-        PORT = '8090' 
+        IMAGE       = 'ramyapadala/my-apache-app'
+        CONTAINER   = 'my-apache-app'
+        SERVER      = '192.168.201.140'
+        DEPLOY_USER = 'vitel'
+        PORT        = '8090'
     }
 
     stages {
@@ -33,6 +35,8 @@ pipeline {
                     )
                 ]) {
                     sh '''
+                        set +x
+
                         echo "$DH_PASS" | docker login \
                             -u "$DH_USER" --password-stdin
 
@@ -48,20 +52,27 @@ pipeline {
             steps {
                 sshagent(['deploy-server-ssh']) {
                     sh '''
-                        ssh -o BatchMode=yes $SERVER "
-                            docker pull $IMAGE:latest &&
-                            docker rm -f $CONTAINER || true
-                        "
-
-                        ssh -o BatchMode=yes $SERVER "
-                            docker run -d \
-                                --name $CONTAINER \
-                                --restart unless-stopped \
-                                -p $PORT:80 \
-                                $IMAGE:latest
-                        "
+                        ssh -o BatchMode=yes \
+                            "$DEPLOY_USER@$SERVER" "
+                                docker pull $IMAGE:latest &&
+                                (docker rm -f $CONTAINER || true) &&
+                                docker run -d \
+                                    --name $CONTAINER \
+                                    --restart unless-stopped \
+                                    -p $PORT:80 \
+                                    $IMAGE:latest
+                            "
                     '''
                 }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                    sleep 5
+                    curl -f http://$SERVER:$PORT/
+                '''
             }
         }
     }
@@ -77,4 +88,5 @@ pipeline {
         }
     }
 }
+
 
